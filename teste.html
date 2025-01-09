@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distribuição de Metal Líquido</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+        input {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #007BFF;
+            color: white;
+        }
+        button {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #op-details {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Distribuição de Metal Líquido</h1>
+
+        <label for="metal-quantity">Quantidade de Metal (kg):</label>
+        <input type="number" id="metal-quantity" min="1" step="0.01" required>
+
+        <label for="op-quantity">Quantidade de OPs:</label>
+        <input type="number" id="op-quantity" min="1" required>
+
+        <button onclick="generateOPInputs()">Gerar OPs</button>
+
+        <div id="op-details"></div>
+
+        <button onclick="distributeMetal()" style="display: none;" id="distribute-btn">Distribuir Metal</button>
+
+        <table id="results-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>OP</th>
+                    <th>Quantidade de Peças</th>
+                    <th>Peso Total (kg)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <button onclick="resetForm()" style="display: none;" id="reset-btn">Apagar Resultados</button>
+    </div>
+
+    <script>
+        function generateOPInputs() {
+            const opQuantity = parseInt(document.getElementById('op-quantity').value);
+            const container = document.getElementById('op-details');
+
+            if (!opQuantity || opQuantity <= 0) {
+                alert('Por favor, insira a quantidade de OPs.');
+                return;
+            }
+
+            container.innerHTML = '';
+
+            for (let i = 1; i <= opQuantity; i++) {
+                container.innerHTML += `
+                    <div>
+                        <label for="op-name-${i}">Nome da OP ${i}:</label>
+                        <input type="text" id="op-name-${i}" required>
+
+                        <label for="op-piece-quantity-${i}">Quantidade de Peças para OP ${i}:</label>
+                        <input type="number" id="op-piece-quantity-${i}" min="1" required>
+
+                        <div id="piece-weights-${i}"></div>
+                        <button onclick="generatePieceInputs(${i})" type="button">Adicionar Peças para OP ${i}</button>
+                    </div>
+                `;
+            }
+
+            document.getElementById('distribute-btn').style.display = 'inline-block';
+        }
+
+        function generatePieceInputs(opIndex) {
+            const pieceQuantity = parseInt(document.getElementById(`op-piece-quantity-${opIndex}`).value);
+            const container = document.getElementById(`piece-weights-${opIndex}`);
+
+            if (!pieceQuantity || pieceQuantity <= 0) {
+                alert(`Por favor, insira a quantidade de peças para OP ${opIndex}.`);
+                return;
+            }
+
+            container.innerHTML = '';
+
+            for (let i = 1; i <= pieceQuantity; i++) {
+                container.innerHTML += `
+                    <div>
+                        <label for="op-${opIndex}-piece-${i}">Peso da Peça ${i} (kg):</label>
+                        <input type="number" id="op-${opIndex}-piece-${i}" min="0.01" step="0.01" required>
+                    </div>
+                `;
+            }
+        }
+
+        function distributeMetal() {
+            const metalQuantity = parseFloat(document.getElementById('metal-quantity').value);
+            const opQuantity = parseInt(document.getElementById('op-quantity').value);
+            const table = document.getElementById('results-table');
+            const tbody = table.querySelector('tbody');
+
+            if (!metalQuantity || metalQuantity <= 0) {
+                alert('Por favor, insira a quantidade de metal.');
+                return;
+            }
+
+            let ops = [];
+
+            for (let i = 1; i <= opQuantity; i++) {
+                const opName = document.getElementById(`op-name-${i}`).value;
+                const pieceQuantity = parseInt(document.getElementById(`op-piece-quantity-${i}`).value);
+                let pieces = [];
+
+                for (let j = 1; j <= pieceQuantity; j++) {
+                    const weight = parseFloat(document.getElementById(`op-${i}-piece-${j}`).value);
+
+                    if (!weight || weight <= 0) {
+                        alert(`Por favor, insira um peso válido para a peça ${j} na OP ${i}.`);
+                        return;
+                    }
+
+                    pieces.push(weight);
+                }
+
+                const totalWeight = pieces.reduce((sum, weight) => sum + weight, 0);
+                ops.push({ name: opName, pieceQuantity, totalWeight });
+            }
+
+            tbody.innerHTML = '';
+            const totalWeightAllOps = ops.reduce((sum, op) => sum + op.totalWeight, 0);
+            const distributionFactor = metalQuantity / totalWeightAllOps;
+
+            ops.forEach(op => {
+                const distributedWeight = op.totalWeight * distributionFactor;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${op.name}</td>
+                        <td>${op.pieceQuantity}</td>
+                        <td>${distributedWeight.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            table.style.display = 'table';
+            document.getElementById('reset-btn').style.display = 'inline-block';
+        }
+
+        function resetForm() {
+            document.getElementById('metal-quantity').value = '';
+            document.getElementById('op-quantity').value = '';
+            document.getElementById('op-details').innerHTML = '';
+            document.getElementById('results-table').style.display = 'none';
+            document.getElementById('reset-btn').style.display = 'none';
+            document.getElementById('distribute-btn').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
